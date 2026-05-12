@@ -3,6 +3,11 @@ import asyncio
 from agents import Agent, Runner
 from openai import AsyncOpenAI
 from agents import set_default_openai_client
+from  memory import Memorystore
+from  context import agentContext
+from  tools import toolLoader
+from  skills import SkillLoader
+
 import os
 class PDFAgent:
     """agent会使用openai官方agent sdk,封装了agent的运行组件,包括工具tools，工作目录workspace，技能skills等"""
@@ -32,9 +37,20 @@ class PDFAgent:
             
         self.model=model
         # 初始化可用的tools列表,skills列表，构建上下文
-        self.tool_list=tools.get_tool()
-        self.skill_list=skills.get_skills()
-        self.contexts=Context.build_context()
+        
+        tools_loader = toolLoader()
+        skills_loader = SkillLoader()
+        memory_store = Memorystore()
+        context_builder = agentContext(
+            memory_store=memory_store,
+            skills_loader=skills_loader,
+            workspace_dir=self.workspace_dir,
+            tools_loader=tools_loader,
+        )
+
+        self.tool_list = tools_loader.get_tool()
+        self.skill_list = skills_loader.get_skills()
+        self.contexts = context_builder.build_context()
 
 
         self.agent = Agent(
@@ -54,5 +70,5 @@ class PDFAgent:
             """
 
 
-            result = await Runner.run(self.agent, question,context=self.contexts)
+            result = await Runner.run_streamed(self.agent, question,context=self.contexts)
             print(result.final_output)

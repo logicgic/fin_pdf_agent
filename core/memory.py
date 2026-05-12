@@ -6,6 +6,9 @@ class Memorystore:
         """memory实例变量用于存储长期记忆，目前未实现"""
         self.memory=[]
 
+    def get_memory(self):
+        """获取长期记忆，目前未实现"""
+        return self.memory
 
     def get_session(self,user_id: str, session_type: str = "sqlite") -> Session:
         """
@@ -21,6 +24,17 @@ class Memorystore:
             return AdvancedSQLiteSession(session_id=session_id, db_path=db_path, create_tables=True)
         else:
             raise ValueError(f"Unknown session type: {session_type}")
-
         
+    
+    def zip_memory(self):
+        """压缩长期记忆，目前未实现"""
+        pass
+
+    def token_count(self):
+        """计算长期记忆的token数量，目前未实现"""
+        return 0
+    
+    
+
+    
         

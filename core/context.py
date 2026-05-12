@@ -1,11 +1,14 @@
 import dataclasses
 import os
 import json
+from  memory import Memorystore
+from  tools import ToolLoader
+from  skills import SkillLoader
 
 @dataclasses
 class agentContext:
 
-    def __init__(self,memory_store:Memorystore,skills_loader: SkillsLoader, workspace_dir: str,tools_loader: ToolLoader):
+    def __init__(self,memory_store:Memorystore,skills_loader: SkillLoader, workspace_dir: str,tools_loader: ToolLoader):
         self.memory=memory_store
         self.skills = skills_loader
         self.workspace_dir = workspace_dir
