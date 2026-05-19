@@ -1,11 +1,11 @@
-import dataclasses
+from dataclasses import dataclass
 import os
 import json
-from  memory import Memorystore
-from  tools import ToolLoader
-from  skills import SkillLoader
-
-@dataclasses
+from .memory import Memorystore
+from .tools import ToolLoader
+from .skills import SkillLoader
+from .path import prompt_dir
+@dataclass
 class agentContext:
 
     def __init__(self,memory_store:Memorystore,skills_loader: SkillLoader, workspace_dir: str,tools_loader: ToolLoader):
@@ -17,10 +17,12 @@ class agentContext:
     def build_system_prompt(self) -> str:
         """构建系统提示词"""
         sys_prompt=[]
+        try:
+            with open(os.path.join(prompt_dir, "system_prompt.md"), "r", encoding="utf-8") as f:
+                sys_prompt.append(f.read())
+        except Exception as e:
+            print(f"读取系统提示词文件失败: {e}")
 
-        with open(os.path.join(self.workspace_dir, "system_prompt.txt"), "r") as f:
-            sys_prompt.append(f.read())
-        
         if(self.skills):
             sys_prompt.append(f"""
             以下是agent可用的技能列表：skills：{self.skills.get_skills()}                              

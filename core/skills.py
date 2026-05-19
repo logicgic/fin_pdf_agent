@@ -4,10 +4,11 @@ class SkillLoader:
     def __init__(self):
         self.skills = {}
 
-    def load_skill(self, skill_name, skill_function):
+    def load_skills(self):
         """加载技能，未实现"""
         pass
 
-    def get_skill(self, skill_name):
+    def get_skills(self):
         """返回可用技能,未实现"""
         pass
+    

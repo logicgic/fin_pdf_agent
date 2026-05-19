@@ -1,1 +1,3 @@
 .vscode/
+core/__pycache__/
+config.yaml
