@@ -58,7 +58,7 @@ class PDFAgent:
             name="pdf_agent",
             instructions="财报分析师，目前只用回答用户的问题",
             model=self.model,
-            tools=[],
+            tools=self.tool_list,
         )
 
         # 封装了agent的运行的主要组件
