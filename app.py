@@ -21,7 +21,8 @@ async def main():
         workspace_dir=workspace_dir,
         openai_api_key=api_key,
         base_url=base_url,
-        model=model
+        model=model,
+        use_sandbox=True
     )
     await agent.chat("你好,这是一次测试")
     
