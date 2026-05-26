@@ -12,7 +12,6 @@ from openai import AsyncOpenAI
 from .context import agentContext
 from .memory import Memorystore
 from .path import HOST_OUTPUT_DIR, HOST_REPO_DIR, HOST_SKILLS_DIR
-from .skills import SkillLoader
 from .tools import ToolLoader
 class PDFAgent:
     """agent会使用openai官方agent sdk,封装了agent的运行组件,包括工具tools，工作目录workspace，技能skills等"""
@@ -46,17 +45,14 @@ class PDFAgent:
         self._setup_openai_client(openai_api_key=openai_api_key, base_url=base_url)
 
         tools_loader = ToolLoader()
-        skills_loader = SkillLoader()
         memory_store = Memorystore()
         context_builder = agentContext(
             memory_store=memory_store,
-            skills_loader=skills_loader,
             workspace_dir=str(self.workspace_dir),
             tools_loader=tools_loader,
         )
 
         self.tool_list = tools_loader.get_tools()
-        self.skill_list = skills_loader.get_skills()
         self.contexts = context_builder.build_context()
         self.agent = self._build_agent()
         self.run_config = self._build_run_config() if self.use_sandbox else None

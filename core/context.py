@@ -3,14 +3,12 @@ import os
 import json
 from .memory import Memorystore
 from .tools import ToolLoader
-from .skills import SkillLoader
 from .path import prompt_dir
 @dataclass
 class agentContext:
 
-    def __init__(self,memory_store:Memorystore,skills_loader: SkillLoader, workspace_dir: str,tools_loader: ToolLoader):
+    def __init__(self,memory_store:Memorystore, workspace_dir: str,tools_loader: ToolLoader):
         self.memory=memory_store
-        self.skills = skills_loader
         self.workspace_dir = workspace_dir
         self.tools = tools_loader
 
@@ -22,11 +20,6 @@ class agentContext:
                 sys_prompt.append(f.read())
         except Exception as e:
             print(f"读取系统提示词文件失败: {e}")
-
-        if(self.skills):
-            sys_prompt.append(f"""
-            以下是agent可用的技能列表：skills：{self.skills.get_skills()}                              
-            """)
         
         if(self.tools):
             sys_prompt.append(f"""
