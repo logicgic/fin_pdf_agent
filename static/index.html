@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>财报解析智能体</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, "Microsoft YaHei", sans-serif;
+      color: #1f2937;
+      background: #f4f6f8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .chat {
+      width: min(760px, 100%);
+      height: min(720px, calc(100vh - 48px));
+      background: #ffffff;
+      border: 1px solid #d8dee8;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .header {
+      padding: 16px 18px;
+      border-bottom: 1px solid #e5e9f0;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .message {
+      max-width: 82%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 14px;
+    }
+
+    .user {
+      align-self: flex-end;
+      color: #ffffff;
+      background: #2563eb;
+    }
+
+    .assistant {
+      align-self: flex-start;
+      background: #eef2f7;
+    }
+
+    .composer {
+      display: flex;
+      gap: 10px;
+      padding: 14px;
+      border-top: 1px solid #e5e9f0;
+      background: #ffffff;
+    }
+
+    textarea {
+      flex: 1;
+      min-height: 44px;
+      max-height: 130px;
+      resize: vertical;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font: inherit;
+      outline: none;
+    }
+
+    textarea:focus {
+      border-color: #2563eb;
+    }
+
+    button {
+      width: 88px;
+      border: 0;
+      border-radius: 8px;
+      color: #ffffff;
+      background: #111827;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+  </style>
+</head>
+<body>
+  <main class="chat">
+    <div class="header">财报解析智能体</div>
+    <section id="messages" class="messages">
+      <div class="message assistant">请输入你的问题。</div>
+    </section>
+    <form id="form" class="composer">
+      <textarea id="input" placeholder="输入问题..." required></textarea>
+      <button id="send" type="submit">发送</button>
+    </form>
+  </main>
+
+  <script>
+    const form = document.getElementById("form");
+    const input = document.getElementById("input");
+    const send = document.getElementById("send");
+    const messages = document.getElementById("messages");
+
+    function addMessage(role, text) {
+      const item = document.createElement("div");
+      item.className = `message ${role}`;
+      item.textContent = text;
+      messages.appendChild(item);
+      messages.scrollTop = messages.scrollHeight;
+      return item;
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+
+      addMessage("user", text);
+      input.value = "";
+      send.disabled = true;
+      const pending = addMessage("assistant", "正在思考...");
+
+      try {
+        const response = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        pending.textContent = data.answer || "无返回内容";
+      } catch (error) {
+        pending.textContent = `请求失败：${error.message}`;
+      } finally {
+        send.disabled = false;
+        input.focus();
+      }
+    });
+  </script>
+</body>
+</html>
