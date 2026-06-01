@@ -1,0 +1,40 @@
+name: fastapi_agent_CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Python checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          python-version: "3.11"
+          auto-update-conda: true
+          activate-environment: fin-pdf-agent
+
+      - name: Install project
+        shell: bash -el {0}
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Ruff
+        shell: bash -el {0}
+        run: |
+          ruff check .
+
+      - name: Compile Python files
+        shell: bash -el {0}
+        run: |
+          python -m compileall app.py core
