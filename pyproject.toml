@@ -19,6 +19,15 @@ dev = [
     "ruff>=0.11.0",
 ]
 
+[tool.setuptools.packages.find]
+include = ["fin_pdf_agent*"]
+
+[tool.setuptools.package-data]
+fin_pdf_agent = [
+    "static/*",
+    "core/resource/prompt/*",
+]
+
 [tool.ruff]
 line-length = 88
 target-version = "py311"

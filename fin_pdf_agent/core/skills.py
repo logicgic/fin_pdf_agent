@@ -21,15 +21,6 @@ class SkillLoader:
             for skill_file in sorted(self.skills_dir.glob("*/SKILL.md"))
         ]
 
-    def read_skill(self, name):
-        """按目录名读取单个技能。"""
-        skill_file = self._skill_file(name)
-
-        if not skill_file.exists():
-            raise FileNotFoundError(f"技能不存在: {name}")
-
-        return self._read_skill_file(skill_file, include_content=True)
-
     def add_skill(
         self,
         name,
@@ -56,8 +47,6 @@ class SkillLoader:
             encoding="utf-8",
         )
 
-        return self.read_skill(name)
-
     def delete_skill(self, name):
         """删除技能目录。"""
         skill_dir = self._skill_file(name).parent
@@ -69,13 +58,13 @@ class SkillLoader:
 
     def _skill_file(self, name):
         """
-        根据技能名称返回对应的 SKILL.md 文件路径，并进行安全验证以防止路径遍历攻击，由ai写的。
+        根据技能名称返回对应的 SKILL.md 文件路径,用于查找或创建skill,并进行安全验证以防止路径遍历攻击，由ai写的。
         """
         safe_name = self._validate_skill_name(name)
         skill_dir = (self.skills_dir / safe_name).resolve()
         root_dir = self.skills_dir.resolve()
 
-        if skill_dir != root_dir and root_dir not in skill_dir.parents:
+        if root_dir not in skill_dir.parents:
             raise ValueError(f"非法技能路径: {name}")
 
         return skill_dir / "SKILL.md"
