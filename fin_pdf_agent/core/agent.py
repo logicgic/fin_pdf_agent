@@ -13,6 +13,8 @@ from .context import agentContext
 from .memory import Memorystore
 from .path import HOST_OUTPUT_DIR, HOST_REPO_DIR, HOST_SKILLS_DIR
 from .tools import ToolLoader
+
+
 class PDFAgent:
     """agent会使用openai官方agent sdk,封装了agent的运行组件,包括工具tools，工作目录workspace，技能skills等"""
 
@@ -46,14 +48,14 @@ class PDFAgent:
 
         tools_loader = ToolLoader()
         memory_store = Memorystore()
-        context_builder = agentContext(
+        self.context_builder = agentContext(
             memory_store=memory_store,
             workspace_dir=str(self.workspace_dir),
             tools_loader=tools_loader,
         )
 
         self.tool_list = tools_loader.get_tools()
-        self.contexts = context_builder.build_context()
+        self.contexts = self.context_builder.build_context()
         self.agent = self._build_agent()
         self.run_config = self._build_run_config() if self.use_sandbox else None
     
@@ -82,7 +84,7 @@ class PDFAgent:
         if not self.use_sandbox:
             return Agent(
                 name="pdf_agent",
-                instructions="你是财报分析师。根据用户问题分析财报内容并给出简洁回答。",
+                instructions=self.context_builder.build_local_instructions(),
                 model=self.model,
                 tools=self.tool_list,
             )
@@ -92,12 +94,7 @@ class PDFAgent:
         # 会带 apply_patch CustomTool，Compaction 也可能不兼容。
         return SandboxAgent(
             name="pdf_sandbox_agent",
-            instructions=(
-                "你是财报解析智能体。只能在沙箱工作区内处理文件。"
-                "财报和输入资料位于 repo/，分析结果写入 output/。"
-                "优先生成结构化结果，例如 Markdown、JSON 或 CSV。"
-                "不要访问互联网。最终回答要说明读取了什么、生成了什么。"
-            ),
+            instructions=self.context_builder.build_sandbox_instructions(),
             model=self.model,
             tools=[],
             default_manifest=Manifest(
