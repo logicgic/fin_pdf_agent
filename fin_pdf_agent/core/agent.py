@@ -45,11 +45,11 @@ class PDFAgent:
         self.use_sandbox = use_sandbox
         self.model = model or "deepseek-v4-flash"
         self._setup_openai_client(openai_api_key=openai_api_key, base_url=base_url)
+        self.memory_store = Memorystore()
 
         tools_loader = ToolLoader()
-        memory_store = Memorystore()
         self.context_builder = agentContext(
-            memory_store=memory_store,
+            memory_store=self.memory_store,
             workspace_dir=str(self.workspace_dir),
             tools_loader=tools_loader,
         )
@@ -92,6 +92,7 @@ class PDFAgent:
         # 启用沙箱时，不传入普通 read_file/write_file/edit_file，避免绕过沙箱隔离。
         # chat_completions 下不要使用 Capabilities.default()，因为默认 Filesystem
         # 会带 apply_patch CustomTool，Compaction 也可能不兼容。
+        # instructions不放动态加载的文件，减少缓存未命中的问题。
         return SandboxAgent(
             name="pdf_sandbox_agent",
             instructions=self.context_builder.build_sandbox_instructions(),
@@ -144,18 +145,24 @@ class PDFAgent:
             workflow_name="financial-pdf-sandbox-agent",
         )
 
-    async def chat(self, question: str):
+    async def chat(self, question: str, user_id: str):
         """
         核心的对外交互接口。
         1. 拿到用户的当前问题。
         2. 将问题连同历史记录、系统提示组装成一整条消息 Payload：`messages`。
         3. 如果启用 sandbox，则通过 run_config 为本次运行创建沙箱会话。
         """
+        session = self.memory_store.get_session(user_id)
         result = await Runner.run(
             starting_agent=self.agent,
             input=question,
-            context=self.contexts,
             run_config=self.run_config,
+            session=session,
         )
+        await session.store_run_usage(result)
         print("agent的回答：", result.final_output)
         return result.final_output
+
+    async def close(self):
+        """关闭 agent 持有的资源。"""
+        await self.memory_store.close()
