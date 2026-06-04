@@ -7,10 +7,14 @@
 1.agent.py框架
 2.memory.py的基本功能，主要是使用openai sdk的session来管理上下文
 3.context.py目前用于构建系统提示词。
+沙箱智能体已添加
 ### 未完成
-1.skills模块未完成
-2.tool模块未完成
+未真正加载工具
+未真正加载skills
 
 ### 未来的扩展
 1.memory.py中添加用户个性化长期记忆
 2.memory.py添加上下文token计算和智能压缩功能
+
+### 存在的问题：
+1.考虑到打包时，path中的项目根目录路可能存在加载错误的问题。

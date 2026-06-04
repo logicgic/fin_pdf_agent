@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 import fastapi
 import yaml
 from fastapi.responses import FileResponse
@@ -13,23 +15,29 @@ if config_path.exists():
 else:
     config = {}
 
-app = fastapi.FastAPI(title="fin_agent_backend")
+llm_config = config.get("llm", {})
+agent = PDFAgent(
+    workspace_dir=workspace_dir,
+    openai_api_key=llm_config.get("api_key", ""),
+    base_url=llm_config.get("base_url", ""),
+    model=llm_config.get("model"),
+    use_sandbox=True,
+)
+
+
+@asynccontextmanager
+async def lifespan(app: fastapi.FastAPI):
+    yield
+    await agent.close()
+
+
+app = fastapi.FastAPI(title="fin_agent_backend", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
-
-
-def get_agent() -> PDFAgent:
-    llm_config = config.get("llm", {})
-    return PDFAgent(
-        workspace_dir=workspace_dir,
-        openai_api_key=llm_config.get("api_key", ""),
-        base_url=llm_config.get("base_url", ""),
-        model=llm_config.get("model"),
-        use_sandbox=True,
-    )
 
 
 class ChatRequest(BaseModel):
     message: str
+    user_id: str = "default"
 
 
 @app.get("/")
@@ -44,13 +52,11 @@ async def root():
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
-    agent = get_agent()
-    answer = await agent.chat(request.message)
+    answer = await agent.chat(request.message, user_id=request.user_id)
     return {"answer": answer}
 
 
 @app.get("/test")
 async def test():
-    agent = get_agent()
-    answer = await agent.chat("你好,这是一次测试")
+    answer = await agent.chat("你好,这是一次测试", user_id="001")
     return {"answer": answer}
