@@ -4,6 +4,7 @@ from uuid import uuid4
 
 import fastapi
 import yaml
+from dotenv import load_dotenv
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -11,6 +12,8 @@ from pydantic import BaseModel
 from fin_pdf_agent.core.agent import PDFAgent
 from fin_pdf_agent.core.path import config_path, static_dir, workspace_dir
 from fin_pdf_agent.core.skills import SkillLoader
+
+load_dotenv()
 
 if config_path.exists():
     with config_path.open("r", encoding="utf-8") as f:
@@ -21,7 +24,6 @@ else:
 llm_config = config.get("llm", {})
 agent = PDFAgent(
     workspace_dir=workspace_dir,
-    openai_api_key=llm_config.get("api_key", ""),
     base_url=llm_config.get("base_url", ""),
     model=llm_config.get("model"),
     use_sandbox=llm_config.get("use_sandbox", False),

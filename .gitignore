@@ -1,6 +1,6 @@
 .vscode/
 core/__pycache__/
-config.yaml
+.env
 __pycache__
 workspace/
 uv.lock
