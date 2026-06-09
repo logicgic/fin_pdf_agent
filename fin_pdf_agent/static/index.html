@@ -15,28 +15,122 @@
       font-family: Arial, "Microsoft YaHei", sans-serif;
       color: #1f2937;
       background: #f4f6f8;
+    }
+
+    .layout {
+      height: 100vh;
+      display: grid;
+      grid-template-columns: 240px minmax(360px, 1fr) 300px;
+    }
+
+    .sidebar,
+    .workspace {
+      min-width: 0;
+      background: #ffffff;
+      border-color: #d8dee8;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar {
+      border-right: 1px solid #d8dee8;
+    }
+
+    .workspace {
+      border-left: 1px solid #d8dee8;
+    }
+
+    .side-header,
+    .workspace-header,
+    .chat-header {
+      height: 56px;
+      padding: 0 16px;
+      border-bottom: 1px solid #e5e9f0;
       display: flex;
       align-items: center;
-      justify-content: center;
-      padding: 24px;
+      justify-content: space-between;
+      font-weight: 700;
+    }
+
+    .new-session {
+      width: auto;
+      padding: 7px 10px;
+      border: 0;
+      border-radius: 6px;
+      color: #ffffff;
+      background: #111827;
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .sessions,
+    .files,
+    .status-list {
+      overflow-y: auto;
+    }
+
+    .sessions {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .session {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      color: #1f2937;
+      background: transparent;
+      text-align: left;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .session.active {
+      border-color: #bfdbfe;
+      background: #eff6ff;
+    }
+
+    .session-title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .session-id {
+      margin-top: 4px;
+      color: #64748b;
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .chat {
-      width: min(760px, 100%);
-      height: min(720px, calc(100vh - 48px));
-      background: #ffffff;
-      border: 1px solid #d8dee8;
-      border-radius: 8px;
+      min-width: 0;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
+      background: #f8fafc;
     }
 
-    .header {
-      padding: 16px 18px;
-      border-bottom: 1px solid #e5e9f0;
-      font-size: 18px;
-      font-weight: 700;
+    .chat-header {
+      background: #ffffff;
+      justify-content: flex-start;
+      gap: 10px;
+    }
+
+    .active-id {
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 400;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .messages {
@@ -93,7 +187,7 @@
       border-color: #2563eb;
     }
 
-    button {
+    .send {
       width: 88px;
       border: 0;
       border-radius: 8px;
@@ -107,18 +201,117 @@
       cursor: not-allowed;
       opacity: 0.55;
     }
+
+    .section {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .section:first-child {
+      height: 42%;
+      border-bottom: 1px solid #e5e9f0;
+    }
+
+    .section:last-child {
+      flex: 1;
+    }
+
+    .section-title {
+      padding: 12px 14px 8px;
+      color: #475569;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .status-list,
+    .files {
+      padding: 0 12px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .item {
+      padding: 8px 0;
+      border-bottom: 1px solid #edf1f7;
+      font-size: 13px;
+    }
+
+    .item-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 700;
+    }
+
+    .item-meta {
+      margin-top: 3px;
+      color: #64748b;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 12px;
+    }
+
+    @media (max-width: 980px) {
+      .layout {
+        grid-template-columns: 190px minmax(280px, 1fr);
+      }
+
+      .workspace {
+        display: none;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .layout {
+        height: auto;
+        min-height: 100vh;
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        height: 210px;
+        border-right: 0;
+        border-bottom: 1px solid #d8dee8;
+      }
+    }
   </style>
 </head>
 <body>
-  <main class="chat">
-    <div class="header">财报解析智能体</div>
-    <section id="messages" class="messages">
-      <div class="message assistant">请输入你的问题。</div>
+  <main class="layout">
+    <aside class="sidebar">
+      <div class="side-header">
+        <span>会话</span>
+        <button id="new-session" class="new-session" type="button">新建</button>
+      </div>
+      <section id="sessions" class="sessions"></section>
+    </aside>
+
+    <section class="chat">
+      <div class="chat-header">
+        <span>财报解析智能体</span>
+        <span id="active-id" class="active-id"></span>
+      </div>
+      <section id="messages" class="messages"></section>
+      <form id="form" class="composer">
+        <textarea id="input" placeholder="输入问题..." required></textarea>
+        <button id="send" class="send" type="submit">发送</button>
+      </form>
     </section>
-    <form id="form" class="composer">
-      <textarea id="input" placeholder="输入问题..." required></textarea>
-      <button id="send" type="submit">发送</button>
-    </form>
+
+    <aside class="workspace">
+      <div class="workspace-header">工作区</div>
+      <section class="section">
+        <div class="section-title">Skill / 工具</div>
+        <div id="status-list" class="status-list"></div>
+      </section>
+      <section class="section">
+        <div class="section-title">文件</div>
+        <div id="files" class="files"></div>
+      </section>
+    </aside>
   </main>
 
   <script>
@@ -126,6 +319,19 @@
     const input = document.getElementById("input");
     const send = document.getElementById("send");
     const messages = document.getElementById("messages");
+    const sessionsNode = document.getElementById("sessions");
+    const newSession = document.getElementById("new-session");
+    const activeId = document.getElementById("active-id");
+    const statusList = document.getElementById("status-list");
+    const files = document.getElementById("files");
+
+    let conversations = JSON.parse(localStorage.getItem("conversations") || "[]");
+    let activeConversationId = localStorage.getItem("activeConversationId");
+
+    function saveConversations() {
+      localStorage.setItem("conversations", JSON.stringify(conversations));
+      localStorage.setItem("activeConversationId", activeConversationId);
+    }
 
     function addMessage(role, text) {
       const item = document.createElement("div");
@@ -136,36 +342,121 @@
       return item;
     }
 
+    function saveMessages() {
+      localStorage.setItem(
+        `messages:${activeConversationId}`,
+        JSON.stringify([...messages.children].map((item) => ({
+          role: item.classList.contains("user") ? "user" : "assistant",
+          text: item.textContent
+        })))
+      );
+    }
+
+    function loadMessages() {
+      messages.innerHTML = "";
+      const saved = JSON.parse(localStorage.getItem(`messages:${activeConversationId}`) || "[]");
+      const items = saved.length ? saved : [{ role: "assistant", text: "请输入你的问题。" }];
+      items.forEach((item) => addMessage(item.role, item.text));
+    }
+
+    function renderSessions() {
+      sessionsNode.innerHTML = "";
+      conversations.forEach((conversation) => {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = `session ${conversation.conversation_id === activeConversationId ? "active" : ""}`;
+        item.innerHTML = `
+          <div class="session-title">${conversation.title}</div>
+          <div class="session-id">${conversation.conversation_id}</div>
+        `;
+        item.addEventListener("click", () => {
+          activeConversationId = conversation.conversation_id;
+          saveConversations();
+          renderSessions();
+          loadMessages();
+          activeId.textContent = activeConversationId;
+        });
+        sessionsNode.appendChild(item);
+      });
+    }
+
+    async function createConversation() {
+      const response = await fetch("/conversations", { method: "POST" });
+      const conversation = await response.json();
+      conversations.unshift(conversation);
+      activeConversationId = conversation.conversation_id;
+      saveConversations();
+      renderSessions();
+      loadMessages();
+      activeId.textContent = activeConversationId;
+    }
+
+    function renderWorkspace(data) {
+      statusList.innerHTML = "";
+      data.tools.forEach((tool) => {
+        const item = document.createElement("div");
+        item.className = "item";
+        item.innerHTML = `<div class="item-name">${tool.name}</div><div class="item-meta">工具已加载</div>`;
+        statusList.appendChild(item);
+      });
+      data.skills.forEach((skill) => {
+        const item = document.createElement("div");
+        item.className = "item";
+        item.innerHTML = `<div class="item-name">${skill.name}</div><div class="item-meta">${skill.description}</div>`;
+        statusList.appendChild(item);
+      });
+
+      files.innerHTML = "";
+      data.files.forEach((file) => {
+        const item = document.createElement("div");
+        item.className = "item";
+        item.innerHTML = `<div class="item-name">${file.name}</div><div class="item-meta">${file.path} · ${file.size} B</div>`;
+        files.appendChild(item);
+      });
+    }
+
+    async function loadWorkspace() {
+      const response = await fetch("/workspace-state");
+      renderWorkspace(await response.json());
+    }
+
+    newSession.addEventListener("click", createConversation);
+
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const text = input.value.trim();
       if (!text) return;
 
       addMessage("user", text);
+      saveMessages();
       input.value = "";
       send.disabled = true;
       const pending = addMessage("assistant", "正在思考...");
 
-      try {
-        const response = await fetch("/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: text })
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
-        pending.textContent = data.answer || "无返回内容";
-      } catch (error) {
-        pending.textContent = `请求失败：${error.message}`;
-      } finally {
-        send.disabled = false;
-        input.focus();
-      }
+      const response = await fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: text,
+          conversation_id: activeConversationId
+        })
+      });
+      const data = await response.json();
+      pending.textContent = data.answer || "无返回内容";
+      saveMessages();
+      send.disabled = false;
+      input.focus();
     });
+
+    (async function init() {
+      if (!activeConversationId || !conversations.length) {
+        await createConversation();
+      }
+      renderSessions();
+      loadMessages();
+      activeId.textContent = activeConversationId;
+      await loadWorkspace();
+    })();
   </script>
 </body>
 </html>

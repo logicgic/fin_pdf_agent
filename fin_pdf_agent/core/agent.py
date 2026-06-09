@@ -145,14 +145,14 @@ class PDFAgent:
             workflow_name="financial-pdf-sandbox-agent",
         )
 
-    async def chat(self, question: str, user_id: str):
+    async def chat(self, question: str, conversation_id: str):
         """
         核心的对外交互接口。
         1. 拿到用户的当前问题。
         2. 将问题连同历史记录、系统提示组装成一整条消息 Payload：`messages`。
         3. 如果启用 sandbox，则通过 run_config 为本次运行创建沙箱会话。
         """
-        session = self.memory_store.get_session(user_id)
+        session = self.memory_store.get_session(conversation_id)
         result = await Runner.run(
             starting_agent=self.agent,
             input=question,

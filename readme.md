@@ -54,6 +54,7 @@ uv run uvicorn fin_pdf_agent.app:app --reload
 ### 未来的扩展
 1.memory.py中添加用户个性化长期记忆
 2.memory.py添加上下文token计算和智能压缩功能
+3.需要将window sandbox改为创建临时的windows用户来进行。
 
 ### 存在的问题：
 1.考虑到打包时，path中的项目根目录路可能存在加载错误的问题。

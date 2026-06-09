@@ -20,16 +20,16 @@ class Memorystore:
 
     def get_session(
         self,
-        user_id: str,
+        conversation_id: str,
         session_type: str = "sqlite",
     ) -> AdvancedSQLiteSession:
         """
-        根据用户 ID 获取或创建一个 Session。
+        根据会话 ID 获取或创建一个 Session。
         Args:
-            user_id: 用户唯一标识 (如 "user_123")
+            conversation_id: 会话唯一标识
             session_type: "sqlite" 
         """
-        session_id = f"agent_session:{user_id}"
+        session_id = f"conversation:{conversation_id}"
         if session_type == "sqlite":
             if session_id not in self.sessions:
                 self.sessions[session_id] = AdvancedSQLiteSession(
