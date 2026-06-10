@@ -11,7 +11,12 @@ from agents.sandbox.entries import Dir, LocalDir
 from openai import AsyncOpenAI
 from .context import agentContext
 from .memory import Memorystore
-from .path import HOST_OUTPUT_DIR, HOST_REPO_DIR, HOST_SKILLS_DIR
+from .path import (
+    HOST_OUTPUT_DIR,
+    HOST_PARSED_DOCS_DIR,
+    HOST_REPO_DIR,
+    HOST_SKILLS_DIR,
+)
 from .tools import ToolLoader
 
 
@@ -40,6 +45,7 @@ class PDFAgent:
         self.workspace_dir.mkdir(parents=True, exist_ok=True)
         HOST_REPO_DIR.mkdir(parents=True, exist_ok=True)
         HOST_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        HOST_PARSED_DOCS_DIR.mkdir(parents=True, exist_ok=True)
         HOST_SKILLS_DIR.mkdir(parents=True, exist_ok=True)
 
         self.use_sandbox = use_sandbox

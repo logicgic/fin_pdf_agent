@@ -1,6 +1,9 @@
 from pathlib import Path
 
 from agents import Tool, function_tool
+from markitdown import MarkItDown
+
+from .path import HOST_PARSED_DOCS_DIR, HOST_REPO_DIR
 
 
 @function_tool
@@ -58,13 +61,30 @@ def edit_file(file_path: str, old_text: str, new_text: str) -> str:
     path.write_text(content.replace(old_text, new_text, 1), encoding="utf-8")
     return f"已编辑文件: {path}"
 
+@function_tool
+def parse_document_to_md(file_path: str) -> str:
+    """
+    使用微软的markItDown库 将 repo 目录中的文件转换为 markdown 文件。
+    Args:
+        file_path: repo 目录内的文件相对路径。
+    Returns:
+        转换后的 markdown 文件路径。
+    """
+    source_path = HOST_REPO_DIR / file_path
+    target_path = (HOST_PARSED_DOCS_DIR / file_path).with_suffix(".md")
+
+    # 解析结果统一写入 workspace/parsed_docs，便于和其他输出区分。
+    result = MarkItDown().convert(source_path)
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_path.write_text(result.markdown, encoding="utf-8")
+    return f"已生成 markdown 文件: {target_path}"
 
 class ToolLoader:
     """
     工具加载器，负责加载和管理可用工具。在chat/compositions中,无法使用WebSearchTool，FileSearchTool等openai内置的工具，所以通过@function_tool手写 FunctionTool 这一类函数工具。
     """
     def __init__(self):
-        self.toolslist: list[Tool] = [read_file, write_file, edit_file]
+        self.toolslist: list[Tool] = [read_file, write_file, edit_file, parse_document_to_md]
 
     def get_tools(self):
         """返回可用工具。"""
