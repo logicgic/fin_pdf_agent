@@ -80,7 +80,7 @@ uv run uvicorn fin_pdf_agent.app:app --reload
 2. `memory.py` 基本会话能力，主要基于 openai sdk 的 session 管理上下文
 3. `context.py` 用于构建系统提示词
 4. 已接入沙箱智能体
-
+5. 已实现上下文压缩功能，当前为简单的 token 计算和智能压缩
 ### 未完成
 
 1.只有自定义的工具，而且比较简单和粗糙
@@ -89,10 +89,12 @@ uv run uvicorn fin_pdf_agent.app:app --reload
 ## 后续扩展
 
 1. 在 `memory.py` 中增加用户个性化长期记忆
-2. 在 `memory.py` 中增加上下文 token 计算和智能压缩
+2.  `memory.py` 已经实现简单的上下文压缩，后续可以考虑更复杂的压缩算法
 3. 将 Windows sandbox 改为基于临时 Windows 用户运行
 
 ## 当前问题
 
 1. 打包后 `path` 中项目根目录的定位可能存在加载问题
 2. 还没有处理完整的代码生命周期
+3. 上下文压缩功能需要优化，考虑更复杂的压缩算法
+4.没有考虑大模型调用次数上限，防止死循环
