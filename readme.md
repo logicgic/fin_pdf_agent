@@ -83,7 +83,7 @@ uv run uvicorn fin_pdf_agent.app:app --reload
 
 ### 未完成
 
-1. 还未真正加载工具
+1.只有自定义的工具，而且比较简单和粗糙
 2. 还未真正加载 skills
 
 ## 后续扩展

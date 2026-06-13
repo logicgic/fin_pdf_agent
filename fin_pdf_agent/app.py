@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from uuid import uuid4
-
+from openai import AsyncOpenAI
 import fastapi
 import yaml
 from dotenv import load_dotenv

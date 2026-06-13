@@ -167,7 +167,16 @@ class PDFAgent:
             session=session,
         )
         await session.store_run_usage(result)
+        total_tokens = result.context_wrapper.usage.total_tokens
         print("agent的回答：", result.final_output)
+        print(f"使用了token {total_tokens} ")
+
+        # 假如token达到阈值，压缩压缩记忆
+        usage = await session.get_session_usage()
+        total_tokens = usage["total_tokens"] if usage else 0
+        if total_tokens > self.memory_store.MAX_TOKENS:
+            await self.memory_store.compact_session(session, self.model)
+        
         return result.final_output
 
     async def close(self):
