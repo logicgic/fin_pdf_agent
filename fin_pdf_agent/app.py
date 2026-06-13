@@ -63,6 +63,9 @@ async def root():
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
+    """
+    ai聊天的主要接口
+    """
     answer = await agent.chat(request.message, conversation_id=request.conversation_id)
     return {"answer": answer}
 

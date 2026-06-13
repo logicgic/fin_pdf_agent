@@ -64,7 +64,7 @@ def edit_file(file_path: str, old_text: str, new_text: str) -> str:
 @function_tool
 def parse_document_to_md(file_path: str) -> str:
     """
-    使用微软的markItDown库 将 repo 目录中的文件转换为 markdown 文件。
+    使用微软的markItDown库 将 repo 目录中的文件转换为 markdown 文件，方便ai用来分析。
     Args:
         file_path: repo 目录内的文件相对路径。
     Returns:
@@ -79,12 +79,69 @@ def parse_document_to_md(file_path: str) -> str:
     target_path.write_text(result.markdown, encoding="utf-8")
     return f"已生成 markdown 文件: {target_path}"
 
+
+def _extract_financial_statements(content: str) -> str:
+    """从 markdown 中提取三张主表内容。"""
+    statement_titles = ["资产负债表", "利润表", "现金流量表"]
+    lines = content.splitlines()
+    statement_indexes = [
+        next(index for index, line in enumerate(lines) if title in line)
+        for title in statement_titles
+    ]
+    sections = []
+    for index, start in enumerate(statement_indexes):
+        end = statement_indexes[index + 1] if index + 1 < len(statement_indexes) else len(lines)
+        sections.append("\n".join(lines[start:end]).strip())
+    return "\n\n".join(sections)
+
+
+@function_tool
+def prepare_report_markdown(report_name: str, max_chars: int = 20000) -> str:
+    """查找财报并准备可直接分析的 markdown 内容。
+    Args:
+        report_name: 财报文件名或关键字。
+        max_chars: 最大返回字符数，内容过长时只返回三张主表。
+    Returns:
+        可直接用于分析的 markdown 内容。
+    """
+    source_path = next(
+        path
+        for path in HOST_REPO_DIR.rglob("*")
+        if path.is_file() and report_name in path.name
+    )
+
+    if source_path.suffix.lower() == ".md":
+        md_path = source_path
+    else:
+        md_path = (
+            HOST_PARSED_DOCS_DIR / source_path.relative_to(HOST_REPO_DIR)
+        ).with_suffix(".md")
+
+        # 已经解析过的财报直接复用，避免重复转换。
+        if not md_path.exists():
+            result = MarkItDown().convert(source_path)
+            md_path.parent.mkdir(parents=True, exist_ok=True)
+            md_path.write_text(result.markdown, encoding="utf-8")
+
+    content = md_path.read_text(encoding="utf-8")
+    if len(content) <= max_chars:
+        return content
+
+    # 财报过长时，只保留资产负债表、利润表和现金流量表。
+    return _extract_financial_statements(content)
+
 class ToolLoader:
     """
     工具加载器，负责加载和管理可用工具。在chat/compositions中,无法使用WebSearchTool，FileSearchTool等openai内置的工具，所以通过@function_tool手写 FunctionTool 这一类函数工具。
     """
     def __init__(self):
-        self.toolslist: list[Tool] = [read_file, write_file, edit_file, parse_document_to_md]
+        self.toolslist: list[Tool] = [
+            read_file,
+            write_file,
+            edit_file,
+            parse_document_to_md,
+            prepare_report_markdown,
+        ]
 
     def get_tools(self):
         """返回可用工具。"""

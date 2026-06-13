@@ -40,6 +40,7 @@ class PDFAgent:
         Host_REPO_DIR: 沙箱内可访问的财报文件目录，放在 workspace/repo 下。
         Host_OUTPUT_DIR: 沙箱内可写入的输出目录，放在 workspace/output 下。
         Host_SKILLS_DIR: 沙箱内技能来源目录，放在 workspace/skills 下。
+        HOST_PARSED_DOCS_DIR: 解析后的文档目录，放在 workspace/parsed_docs 下。
         """
         self.workspace_dir = Path(workspace_dir)
         self.workspace_dir.mkdir(parents=True, exist_ok=True)
