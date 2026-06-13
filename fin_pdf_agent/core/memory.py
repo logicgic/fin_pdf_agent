@@ -97,11 +97,7 @@ class Memorystore:
         )
 
         await session.clear_session()
-        await session.add_items([summary_item, *recent_items])
-
-    def _get_session_item(self,session: AdvancedSQLiteSession):
-        """获取会话中的所有消息"""
-        
+        await session.add_items([summary_item, *recent_items])    
 
     def token_count(self):
         """计算长期记忆的token数量，目前未实现"""
