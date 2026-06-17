@@ -1,3 +1,5 @@
 llm:
   base_url: "https://api.deepseek.com"
   model: "deepseek-v4-flash"
+  max_turns: 30
+  run_timeout_seconds: 300

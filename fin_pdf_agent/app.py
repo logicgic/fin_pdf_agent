@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from uuid import uuid4
-from openai import AsyncOpenAI
+
 import fastapi
 import yaml
 from dotenv import load_dotenv
@@ -27,6 +27,8 @@ agent = PDFAgent(
     base_url=llm_config.get("base_url", ""),
     model=llm_config.get("model"),
     use_sandbox=llm_config.get("use_sandbox", False),
+    max_turns=llm_config.get("max_turns", 30),
+    run_timeout_seconds=llm_config.get("run_timeout_seconds", 300),
 )
 
 

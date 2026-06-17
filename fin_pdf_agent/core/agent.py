@@ -1,14 +1,22 @@
+import asyncio
 import os
 import sys
 from pathlib import Path
 
-from agents import Agent, Runner
-from agents import set_default_openai_api, set_default_openai_client, set_tracing_disabled
+from agents import (
+    Agent,
+    Runner,
+    set_default_openai_api,
+    set_default_openai_client,
+    set_tracing_disabled,
+)
+from agents.exceptions import MaxTurnsExceeded
 from agents.run import RunConfig
 from agents.sandbox import Manifest, SandboxAgent, SandboxRunConfig
 from agents.sandbox.capabilities import LocalDirLazySkillSource, Shell, Skills
 from agents.sandbox.entries import Dir, LocalDir
 from openai import AsyncOpenAI
+
 from .context import agentContext
 from .memory import Memorystore
 from .path import (
@@ -21,7 +29,10 @@ from .tools import ToolLoader
 
 
 class PDFAgent:
-    """agent会使用openai官方agent sdk,封装了agent的运行组件,包括工具tools，工作目录workspace，技能skills等"""
+    """
+    agent会使用openai官方agent sdk,封装了agent的运行组件,
+    包括工具tools，工作目录workspace，技能skills等。
+    """
 
     def __init__(
         self,
@@ -30,13 +41,17 @@ class PDFAgent:
         base_url: str | None = None,
         model: str | None = "deepseek-v4-flash",
         use_sandbox: bool = True,
+        max_turns: int = 30,           # 单次请求的模型调用上限从默认的10调整为30
+        run_timeout_seconds: int = 300,   #单次请求最多 5 分钟，避免后端挂死
     ) -> None:
         """
         初始化agent
-        openai_api_key需要兼容openai接口的apikey,可使用环境变量 OPENAI_API_KEY 作为备用。
+        openai_api_key需要兼容openai接口的apikey,
+        可使用环境变量 OPENAI_API_KEY 作为备用。
         base_url: OpenAI 兼容接口的代理/服务地址.
         workspace:用于获取pdf和输出ai操作的结果的地方。
-        use_sandbox: 是否启用官方 SandboxAgent。启用后会把 repo/、output/、skills/ 放入沙箱语义中。
+        use_sandbox: 是否启用官方 SandboxAgent。
+        启用后会把 repo/、output/、skills/ 放入沙箱语义中。
         Host_REPO_DIR: 沙箱内可访问的财报文件目录，放在 workspace/repo 下。
         Host_OUTPUT_DIR: 沙箱内可写入的输出目录，放在 workspace/output 下。
         Host_SKILLS_DIR: 沙箱内技能来源目录，放在 workspace/skills 下。
@@ -51,6 +66,8 @@ class PDFAgent:
 
         self.use_sandbox = use_sandbox
         self.model = model or "deepseek-v4-flash"
+        self.max_turns = max(1, int(max_turns))
+        self.run_timeout_seconds = max(1, int(run_timeout_seconds))
         self._setup_openai_client(openai_api_key=openai_api_key, base_url=base_url)
         self.memory_store = Memorystore()
 
@@ -65,8 +82,8 @@ class PDFAgent:
         self.contexts = self.context_builder.build_context()
         self.agent = self._build_agent()
         self.run_config = self._build_run_config() if self.use_sandbox else None
-    
-    #封装api和base_url的配置，以及设置agent的api模式和构建的过程   
+
+    # 封装api和base_url的配置，以及设置agent的api模式和构建的过程
     def _setup_openai_client(
         self,
         *,
@@ -107,13 +124,14 @@ class PDFAgent:
             tools=[],
             default_manifest=Manifest(
                 entries={
-                    # 沙箱agent的工作目录，要读取的财报是repo,输出结果放在output，技能在skills
+                    # 沙箱agent的工作目录。
+                    # 要读取的财报是repo,输出结果放在output，技能在skills。
                     "repo": LocalDir(src=HOST_REPO_DIR),
                     "output": Dir(),
                 }
             ),
             capabilities=[
-                # Shell 暴露 exec_command/write_stdin，属于 FunctionTool，可用于 chat_completions。
+                # Shell 暴露 exec_command/write_stdin，属于 FunctionTool。
                 Shell(),
                 # 技能来源是 HOST_SKILLS_DIR，技能会被动态加载到沙箱环境中。
                 Skills(
@@ -130,12 +148,11 @@ class PDFAgent:
 
         if sys.platform == "win32":
             # UnixLocalSandboxClient 不支持 Windows，因此 Windows 下使用 Docker 沙箱。
-            from docker import from_env as docker_from_env
-
             from agents.sandbox.sandboxes.docker import (
                 DockerSandboxClient,
                 DockerSandboxClientOptions,
             )
+            from docker import from_env as docker_from_env
 
             sandbox_config = SandboxRunConfig(
                 client=DockerSandboxClient(docker_from_env()),
@@ -160,12 +177,22 @@ class PDFAgent:
         3. 如果启用 sandbox，则通过 run_config 为本次运行创建沙箱会话。
         """
         session = self.memory_store.get_session(conversation_id)
-        result = await Runner.run(
-            starting_agent=self.agent,
-            input=question,
-            run_config=self.run_config,
-            session=session,
-        )
+        try:
+            result = await asyncio.wait_for(
+                Runner.run(
+                    starting_agent=self.agent,
+                    input=question,
+                    run_config=self.run_config,
+                    session=session,
+                    max_turns=self.max_turns,
+                ),
+                timeout=self.run_timeout_seconds,
+            )
+        except MaxTurnsExceeded:
+            return "本次任务调用次数过多，已停止。请缩小问题范围或分步骤提问。"
+        except asyncio.TimeoutError:
+            return "本次任务执行时间过长，已停止。请缩小问题范围或稍后重试。"
+
         await session.store_run_usage(result)
         total_tokens = result.context_wrapper.usage.total_tokens
         print("agent的回答：", result.final_output)
@@ -176,7 +203,7 @@ class PDFAgent:
         total_tokens = usage["total_tokens"] if usage else 0
         if total_tokens > self.memory_store.MAX_TOKENS:
             await self.memory_store.compact_session(session, self.model)
-        
+
         return result.final_output
 
     async def close(self):
