@@ -1,6 +1,7 @@
 import asyncio
 import os
 import sys
+from contextlib import nullcontext
 from pathlib import Path
 
 from agents import (
@@ -15,6 +16,7 @@ from agents.run import RunConfig
 from agents.sandbox import Manifest, SandboxAgent, SandboxRunConfig
 from agents.sandbox.capabilities import LocalDirLazySkillSource, Shell, Skills
 from agents.sandbox.entries import Dir, LocalDir
+from langfuse import propagate_attributes
 from openai import AsyncOpenAI
 
 from .context import agentContext
@@ -25,6 +27,7 @@ from .path import (
     HOST_REPO_DIR,
     HOST_SKILLS_DIR,
 )
+from .tracing import get_langfuse_client, is_langfuse_enabled
 from .tools import ToolLoader, set_task_state_recorder, update_task_state_from_result
 
 
@@ -103,7 +106,7 @@ class PDFAgent:
         custom_client = AsyncOpenAI(base_url=api_base_url, api_key=api_key)
         set_default_openai_client(custom_client)
         set_default_openai_api("chat_completions")
-        set_tracing_disabled(True)
+        set_tracing_disabled(not is_langfuse_enabled())
 
     def _build_agent(self) -> Agent:
         # 不启用沙箱时，保留普通 Agent：使用本地 function tools 直接读写文件。
@@ -180,36 +183,86 @@ class PDFAgent:
         """
         session = self.memory_store.get_session(conversation_id)
         self.active_conversation_id = conversation_id
-        try:
-            result = await asyncio.wait_for(
-                Runner.run(
-                    starting_agent=self.agent,
-                    input=question,
-                    run_config=self.run_config,
-                    session=session,
-                    max_turns=self.max_turns,
-                ),
-                timeout=self.run_timeout_seconds,
+        langfuse = get_langfuse_client()
+        trace_context = (
+            langfuse.start_as_current_observation(
+                as_type="span",
+                name="pdf-agent-chat",
+                input={"question": question},
             )
-        except MaxTurnsExceeded:
-            return "本次任务调用次数过多，已停止。请缩小问题范围或分步骤提问。"
-        except asyncio.TimeoutError:
-            return "本次任务执行时间过长，已停止。请缩小问题范围或稍后重试。"
+            if langfuse
+            else nullcontext()
+        )
 
-        await session.store_run_usage(result)
-        self._record_tool_results(result, conversation_id)
-
-        # 假如token达到阈值，压缩压缩记忆
-        usage = await session.get_session_usage()
-        total_tokens = usage["total_tokens"] if usage else 0
-        if total_tokens > self.memory_store.MAX_TOKENS:
-            await self.memory_store.compact_session(
-                session=session,
-                model=self.model,
-                conversation_id=conversation_id,
+        with trace_context:
+            trace_attr_context = (
+                propagate_attributes(
+                    trace_name="pdf-agent-chat",
+                    session_id=conversation_id,
+                    tags=["chat", "pdf-analysis"],
+                    metadata={
+                        "model": self.model,
+                        "use_sandbox": self.use_sandbox,
+                        "max_turns": self.max_turns,
+                    },
+                )
+                if langfuse
+                else nullcontext()
             )
+            with trace_attr_context:
+                if langfuse:
+                    langfuse.set_current_trace_io(
+                        input={"question": question},
+                    )
 
-        return result.final_output
+                try:
+                    result = await asyncio.wait_for(
+                        Runner.run(
+                            starting_agent=self.agent,
+                            input=question,
+                            run_config=self.run_config,
+                            session=session,
+                            max_turns=self.max_turns,
+                        ),
+                        timeout=self.run_timeout_seconds,
+                    )
+                except MaxTurnsExceeded:
+                    message = "本次任务调用次数过多，已停止。请缩小问题范围或分步骤提问。"
+                    if langfuse:
+                        langfuse.set_current_trace_io(
+                            input={"question": question},
+                            output={"answer": message},
+                        )
+                    return message
+                except asyncio.TimeoutError:
+                    message = "本次任务执行时间过长，已停止。请缩小问题范围或稍后重试。"
+                    if langfuse:
+                        langfuse.set_current_trace_io(
+                            input={"question": question},
+                            output={"answer": message},
+                        )
+                    return message
+
+                await session.store_run_usage(result)
+                self._record_tool_results(result, conversation_id)
+
+                # 假如token达到阈值，压缩压缩记忆
+                usage = await session.get_session_usage()
+                total_tokens = usage["total_tokens"] if usage else 0
+                if total_tokens > self.memory_store.MAX_TOKENS:
+                    await self.memory_store.compact_session(
+                        session=session,
+                        model=self.model,
+                        conversation_id=conversation_id,
+                    )
+
+                if langfuse:
+                    langfuse.set_current_trace_io(
+                        input={"question": question},
+                        output={"answer": result.final_output},
+                    )
+
+                return result.final_output
 
     def _record_tool_results(self, result, conversation_id: str) -> None:
         """将 SDK 工具执行结果写入结构化任务状态。"""

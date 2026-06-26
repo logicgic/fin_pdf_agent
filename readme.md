@@ -33,6 +33,9 @@ Copy-Item .env.example .env
 ```env
 OPENAI_API_KEY=你的 API Key
 OPENAI_BASE_URL=https://api.deepseek.com
+LANGFUSE_PUBLIC_KEY=pk-lf-...           # 可选：Langfuse 项目公钥
+LANGFUSE_SECRET_KEY=sk-lf-...           # 可选：Langfuse 项目私钥
+LANGFUSE_BASE_URL=https://us.cloud.langfuse.com
 ```
 
 `config.yaml` 只保留非敏感配置，例如模型名、接口地址、是否启用沙箱：
@@ -50,6 +53,9 @@ llm:
 - `base_url` 优先从 `config.yaml` 读取，未配置时回退到 `.env` 中的 `OPENAI_BASE_URL`
 - `model` 从 `config.yaml` 读取
 - `use_sandbox` 从 `config.yaml` 读取
+- Langfuse 开启条件：同时配置 `LANGFUSE_PUBLIC_KEY`、`LANGFUSE_SECRET_KEY` 和 `LANGFUSE_BASE_URL`
+- Langfuse 会为每次 `/chat` 调用创建顶层 trace，并自动关联 OpenAI Agents SDK 的模型调用与工具调用
+- 如需启动时做一次连通性校验，可额外设置 `LANGFUSE_AUTH_CHECK_ON_STARTUP=true`；生产环境默认建议保持关闭
 
 ### 3. 启动服务
 

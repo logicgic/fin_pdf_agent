@@ -5,16 +5,21 @@ from uuid import uuid4
 import fastapi
 import yaml
 from dotenv import load_dotenv
-from openai import APIConnectionError, AuthenticationError, BadRequestError, RateLimitError
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+load_dotenv()
+
+from fin_pdf_agent.core.tracing import configure_langfuse, flush_langfuse
+
+configure_langfuse(service_name="fin-pdf-agent-api")
+
+from openai import APIConnectionError, AuthenticationError, BadRequestError, RateLimitError
+
 from fin_pdf_agent.core.agent import PDFAgent
 from fin_pdf_agent.core.path import config_path, static_dir, workspace_dir
 from fin_pdf_agent.core.skills import SkillLoader
-
-load_dotenv()
 
 if config_path.exists():
     with config_path.open("r", encoding="utf-8") as f:
@@ -36,6 +41,7 @@ agent = PDFAgent(
 @asynccontextmanager
 async def lifespan(app: fastapi.FastAPI):
     yield
+    flush_langfuse()
     await agent.close()
 
 
