@@ -4,3 +4,11 @@ core/__pycache__/
 __pycache__
 workspace/
 uv.lock
+docs/
+database/
+!database/
+!workspace/
+!workspace/output/
+database/*.db-wal
+database/*.db-shm
+workspace/output/*.log

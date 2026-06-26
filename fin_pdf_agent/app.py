@@ -5,6 +5,7 @@ from uuid import uuid4
 import fastapi
 import yaml
 from dotenv import load_dotenv
+from openai import APIConnectionError, AuthenticationError, BadRequestError, RateLimitError
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -68,7 +69,23 @@ async def chat(request: ChatRequest):
     """
     ai聊天的主要接口
     """
-    answer = await agent.chat(request.message, conversation_id=request.conversation_id)
+    try:
+        answer = await agent.chat(
+            request.message,
+            conversation_id=request.conversation_id,
+        )
+    except AuthenticationError:
+        answer = "模型服务认证失败。请检查 API Key 是否正确。"
+    except RateLimitError:
+        answer = "模型服务当前限流。请稍后重试。"
+    except APIConnectionError:
+        answer = "模型服务连接失败。请检查 base_url、网络或上游服务状态。"
+    except BadRequestError:
+        answer = "模型请求参数错误。请检查模型名、请求内容或接口兼容性。"
+    except ValueError as exc:
+        answer = str(exc)
+    except Exception:
+        answer = "处理请求时发生未知错误，请稍后重试或检查服务日志。"
     return {"answer": answer}
 
 

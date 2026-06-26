@@ -25,7 +25,7 @@ from .path import (
     HOST_REPO_DIR,
     HOST_SKILLS_DIR,
 )
-from .tools import ToolLoader
+from .tools import ToolLoader, set_task_state_recorder, update_task_state_from_result
 
 
 class PDFAgent:
@@ -70,6 +70,7 @@ class PDFAgent:
         self.run_timeout_seconds = max(1, int(run_timeout_seconds))
         self._setup_openai_client(openai_api_key=openai_api_key, base_url=base_url)
         self.memory_store = Memorystore()
+        self.active_conversation_id: str | None = None
 
         tools_loader = ToolLoader()
         self.context_builder = agentContext(
@@ -82,6 +83,7 @@ class PDFAgent:
         self.contexts = self.context_builder.build_context()
         self.agent = self._build_agent()
         self.run_config = self._build_run_config() if self.use_sandbox else None
+        set_task_state_recorder(self._record_task_state)
 
     # 封装api和base_url的配置，以及设置agent的api模式和构建的过程
     def _setup_openai_client(
@@ -177,6 +179,7 @@ class PDFAgent:
         3. 如果启用 sandbox，则通过 run_config 为本次运行创建沙箱会话。
         """
         session = self.memory_store.get_session(conversation_id)
+        self.active_conversation_id = conversation_id
         try:
             result = await asyncio.wait_for(
                 Runner.run(
@@ -194,17 +197,75 @@ class PDFAgent:
             return "本次任务执行时间过长，已停止。请缩小问题范围或稍后重试。"
 
         await session.store_run_usage(result)
-        total_tokens = result.context_wrapper.usage.total_tokens
-        print("agent的回答：", result.final_output)
-        print(f"使用了token {total_tokens} ")
+        self._record_tool_results(result, conversation_id)
 
         # 假如token达到阈值，压缩压缩记忆
         usage = await session.get_session_usage()
         total_tokens = usage["total_tokens"] if usage else 0
         if total_tokens > self.memory_store.MAX_TOKENS:
-            await self.memory_store.compact_session(session, self.model)
+            await self.memory_store.compact_session(
+                session=session,
+                model=self.model,
+                conversation_id=conversation_id,
+            )
 
         return result.final_output
+
+    def _record_tool_results(self, result, conversation_id: str) -> None:
+        """将 SDK 工具执行结果写入结构化任务状态。"""
+        tool_names_by_call_id: dict[str, str] = {}
+        for item in result.new_items:
+            if getattr(item, "type", None) != "tool_call_item":
+                continue
+
+            call_id = getattr(item, "call_id", None)
+            tool_name = getattr(item, "tool_name", None)
+            if call_id and tool_name:
+                tool_names_by_call_id[call_id] = tool_name
+
+        for item in result.new_items:
+            if getattr(item, "type", None) != "tool_call_output_item":
+                continue
+
+            call_id = getattr(item, "call_id", None)
+            tool_name = tool_names_by_call_id.get(call_id)
+            if not tool_name:
+                continue
+
+            update_task_state_from_result(
+                self.memory_store,
+                conversation_id,
+                tool_name,
+                str(getattr(item, "output", "")),
+            )
+
+    def _record_task_state(self, tool_name: str, value: str) -> None:
+        """记录当前会话的结构化任务状态。"""
+        if not self.active_conversation_id:
+            return
+
+        if tool_name == "parse_document_to_md":
+            self.memory_store.update_task_state(
+                self.active_conversation_id,
+                parsed_file=value,
+                generated_output=value,
+            )
+            return
+
+        if tool_name == "prepare_report_markdown":
+            self.memory_store.update_task_state(
+                self.active_conversation_id,
+                parsed_file=value,
+                generated_output=f"{value} 已生成 markdown 分析内容",
+            )
+            return
+
+        if tool_name == "prepare_structured_report":
+            self.memory_store.update_task_state(
+                self.active_conversation_id,
+                parsed_file=value,
+                generated_output=f"{value} 已生成结构化财报内容",
+            )
 
     async def close(self):
         """关闭 agent 持有的资源。"""
