@@ -56,6 +56,7 @@ llm:
 - Langfuse 开启条件：同时配置 `LANGFUSE_PUBLIC_KEY`、`LANGFUSE_SECRET_KEY` 和 `LANGFUSE_BASE_URL`
 - Langfuse 会为每次 `/chat` 调用创建顶层 trace，并自动关联 OpenAI Agents SDK 的模型调用与工具调用
 - 如需启动时做一次连通性校验，可额外设置 `LANGFUSE_AUTH_CHECK_ON_STARTUP=true`；生产环境默认建议保持关闭
+- UpTrain 评估脚本默认复用 `OPENAI_API_KEY` 与 `OPENAI_BASE_URL`，也可单独通过 `UPTRAIN_EVAL_MODEL`、`UPTRAIN_API_BASE`、`UPTRAIN_LLM_PROVIDER` 覆盖
 
 ### 3. 启动服务
 
@@ -68,6 +69,34 @@ uv run uvicorn fin_pdf_agent.app:app --reload
 - 页面：`http://127.0.0.1:8000`
 - 健康检查：`http://127.0.0.1:8000/health`
 - 接口文档：`http://127.0.0.1:8000/docs`
+
+## UpTrain 评估
+
+项目提供了一个离线评估脚本，用于从 Langfuse 拉取 trace，使用 UpTrain 对最终回答和可见推理说明做质量评估，并可选将评估结果写回 Langfuse score。
+
+示例：
+
+```powershell
+uv run python scripts/evaluate_langfuse_with_uptrain.py --trace-id <trace_id> --write-scores
+```
+
+也可以按会话批量评估最近的 trace：
+
+```powershell
+uv run python scripts/evaluate_langfuse_with_uptrain.py --session-id <session_id> --limit 5 --write-scores
+```
+
+脚本输出：
+
+- `workspace/output/uptrain_langfuse_eval_*.json`：本次评估报告
+- Langfuse scores：如 `uptrain_response_response_relevance`、`uptrain_response_response_completeness`
+- 性能指标分数：如 `trace_latency_seconds`、`trace_total_tokens`
+
+说明：
+
+- 当前项目不是标准 RAG 流程，因此 UpTrain 主要用于评估回答质量与“可见推理说明”的充分性
+- `trace_latency_seconds`、`trace_total_tokens` 来自 Langfuse trace 指标，不是 UpTrain 模型打分
+- 如果模型没有暴露可见推理文本，脚本会自动跳过推理评估
 
 ## 目录说明
 
